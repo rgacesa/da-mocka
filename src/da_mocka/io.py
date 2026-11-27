@@ -161,9 +161,7 @@ def validate_rank_exports(data: Dataset, directory: Path, sample_id: str) -> Non
         actual = _abundance(directory / f"microbiome_{rank}.tsv", sample_id, expected.index)
         if set(actual.columns) != set(expected.columns):
             raise ContractError("Exported taxonomic rank features differ from tree")
-        if not np.allclose(
-            actual.loc[:, expected.columns], expected, atol=TOLERANCE, rtol=0
-        ):
+        if not np.allclose(actual.loc[:, expected.columns], expected, atol=TOLERANCE, rtol=0):
             raise ContractError("Exported taxonomic abundances disagree with terminal components")
         if not np.allclose(actual.sum(axis=1), 1, atol=TOLERANCE, rtol=0):
             raise ContractError("Exported taxonomic rank must sum to one")
