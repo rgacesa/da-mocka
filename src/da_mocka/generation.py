@@ -1,4 +1,4 @@
-"""Generate local, unreviewed synthetic candidates using the independent engine."""
+"""Generate local, unreviewed synthetic candidates using a selected engine."""
 
 import json
 import shutil
@@ -10,7 +10,7 @@ import yaml
 
 from da_mocka import __version__
 from da_mocka.config import Config, ContractError, load_config
-from da_mocka.engines.independent import IndependentEngine
+from da_mocka.engines.base import fit_engine
 from da_mocka.io import Dataset, load_dataset
 from da_mocka.stratification import plan_strata, sample_strata
 from da_mocka.taxonomy import aggregate_taxonomy
@@ -68,9 +68,8 @@ def generate(config: Config, output: Path | str, n_samples: int | None, seed: in
     if config.stratification.columns:
         phenotypes, microbiome = sample_strata(data, config, strata, rng)
     else:
-        engine = IndependentEngine.fit(data, config)
-        phenotypes = engine.sample_phenotypes(n_samples, rng)
-        microbiome = engine.sample_microbiome(n_samples, rng)
+        engine = fit_engine(data, config)
+        phenotypes, microbiome = engine.sample(n_samples, rng)
     ids = _fresh_ids(data, config, n_samples, rng)
     for frame in (phenotypes, microbiome):
         frame.index = ids
@@ -95,7 +94,8 @@ def generate(config: Config, output: Path | str, n_samples: int | None, seed: in
             raise ContractError("Generated sample count mismatch")
         manifest = {
             "version": __version__,
-            "engine": "independent",
+            "engine": config.engine.name,
+            "engine_settings": asdict(config.engine),
             "stratification": list(config.stratification.columns),
             "allocation": config.stratification.allocation,
             "n_samples": n_samples,

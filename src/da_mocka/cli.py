@@ -65,6 +65,10 @@ def main(argv: list[str] | None = None) -> int:
     gen.add_argument("--rare-strata", choices=["error", "suppress"])
     gen.add_argument("--missing-strata", choices=["error", "exclude"])
     gen.add_argument("--pooling-strength", type=float)
+    gen.add_argument("--engine", choices=["independent", "joint_latent"])
+    gen.add_argument("--latent-rank", type=int)
+    gen.add_argument("--shrinkage", type=float)
+    gen.add_argument("--batch-size", type=int)
     args = parser.parse_args(argv)
     try:
         if args.command == "demo":
@@ -73,6 +77,17 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "generate":
             config = load_config(args.config)
             config = replace(config, stratification=_stratify_args(args, config.stratification))
+            options = {
+                name: value
+                for name, value in (
+                    ("name", args.engine),
+                    ("rank", args.latent_rank),
+                    ("shrinkage", args.shrinkage),
+                    ("batch_size", args.batch_size),
+                )
+                if value is not None
+            }
+            config = replace(config, engine=replace(config.engine, **options))
             generate(config, args.output, args.n_samples, args.seed)
             print("Synthetic candidates created. Not reviewed for disclosure or release.")
         else:

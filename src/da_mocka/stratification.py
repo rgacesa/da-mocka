@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from da_mocka.config import Config, ContractError, validate_stratification
-from da_mocka.engines.independent import IndependentEngine
+from da_mocka.engines.base import Engine, fit_engine
 from da_mocka.io import Dataset
 
 Key = tuple[str, ...]
@@ -113,19 +113,19 @@ def plan_strata(data: Dataset, config: Config, n: int | None) -> list[Stratum]:
     return [Stratum(key, groups[key], count) for key, count in zip(groups, counts, strict=True)]
 
 
-def _fit_subset(data: Dataset, config: Config, ids: pd.Index) -> IndependentEngine:
+def _fit_subset(data: Dataset, config: Config, ids: pd.Index) -> Engine:
     subset = Dataset(data.phenotypes.loc[ids], data.microbiome.loc[ids], data.taxonomy)
-    return IndependentEngine.fit(subset, config)
+    return fit_engine(subset, config)
 
 
 def sample_strata(
     data: Dataset, config: Config, strata: list[Stratum], rng: np.random.Generator
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Fit independent models per stratum, optionally mix with prefix-parent models."""
+    """Fit models per stratum, optionally mix with prefix-parent models."""
     spec = config.stratification
     phenotype_parts = []
     microbiome_parts = []
-    cache: dict[Key, IndependentEngine] = {}
+    cache: dict[Key, Engine] = {}
     for group in strata:
         if not group.count:
             continue
@@ -151,8 +151,7 @@ def sample_strata(
                 if key not in cache:
                     cache[key] = _fit_subset(data, config, ids)
                 engine = cache[key]
-                p = engine.sample_phenotypes(count, rng)
-                x = engine.sample_microbiome(count, rng)
+                p, x = engine.sample(count, rng)
                 for name, value in zip(spec.columns, group.key, strict=True):
                     p[name] = pd.Series(value, index=p.index, dtype="string")
                 phenotype_parts.append(p)

@@ -4,7 +4,7 @@ Constrained, stratified, privacy-aware synthetic biological data generation.
 
 **Fake individuals. Real patterns. No poo.**
 
-Status: **0.0.3** — categorical stratification, independent marginal baseline, biological constraints and taxonomy aggregation. Outputs are local unreviewed synthetic candidates, not anonymous or approved for release.
+Status: **0.0.4** — experimental joint latent engine, categorical stratification, independent baseline, biological constraints and taxonomy aggregation. Outputs are local unreviewed synthetic candidates, not anonymous or approved for release.
 
 ## Quick start (Linux / Snellius)
 
@@ -34,6 +34,8 @@ For your own data, start from configs/example.yaml and edit paths, phenotype typ
 The baseline supports categorical stratification but intentionally does not model within-stratum correlations. It samples observed categories, empirical numerical marginals and taxon presence/positive abundance independently, then normalizes communities. Derived BMI is opt-in. Identifier columns are dropped and sample IDs regenerated. See [baseline engine](docs/BASELINE.md) for limitations.
 
 Stratify by disease or disease and sex, select outcomes, and balance or customize cohort sizes. See [stratification](docs/STRATIFICATION.md) for CLI and YAML examples.
+
+Select `--engine joint_latent` to model approximate within-stratum dependencies, including microbial presence, abundance, phenotypes and missingness. The independent engine remains the default. See [joint engine](docs/JOINT_LATENT.md).
 
 See [roadmap](docs/ROADMAP.md), [data contract](docs/DATA_CONTRACT.md), and [privacy policy](docs/PRIVACY.md).
 

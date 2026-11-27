@@ -118,3 +118,7 @@ class IndependentEngine:
         if (totals <= 0).any() or not np.isfinite(totals).all():
             raise ContractError("Unable to generate nonempty microbial communities")
         return pd.DataFrame(x / totals, columns=self.taxa)
+
+    def sample(self, n: int, rng: np.random.Generator) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """Draw aligned independent phenotype and microbial tables."""
+        return self.sample_phenotypes(n, rng), self.sample_microbiome(n, rng)

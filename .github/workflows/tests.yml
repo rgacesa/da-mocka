@@ -7,6 +7,9 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
     strategy:
       fail-fast: false
       matrix:
@@ -29,3 +32,5 @@ jobs:
           da-mocka check-input --config work/mock/config.yaml
           da-mocka generate --config work/ci/config.yaml --output work/stratified --n-samples 100 --stratify disease sex --include disease=A,control --balance disease --min-stratum-size 2
           da-mocka check-input --config work/stratified/config.yaml
+          da-mocka generate --config work/ci/config.yaml --output work/joint --engine joint_latent --latent-rank 8 --n-samples 150
+          da-mocka check-input --config work/joint/config.yaml

@@ -46,6 +46,25 @@ class Stratification:
 
 
 @dataclass(frozen=True)
+class EngineSettings:
+    name: str = "independent"
+    rank: int = 32
+    shrinkage: float = 0.1
+    batch_size: int = 1024
+
+
+def validate_engine(spec: EngineSettings) -> None:
+    if spec.name not in ("independent", "joint_latent"):
+        raise ContractError("Unknown statistical engine")
+    if type(spec.rank) is not int or spec.rank < 1:
+        raise ContractError("Latent rank must be a positive integer")
+    if not _number(spec.shrinkage) or not 0 <= spec.shrinkage <= 1:
+        raise ContractError("Shrinkage must be between zero and one")
+    if type(spec.batch_size) is not int or spec.batch_size < 1:
+        raise ContractError("Batch size must be a positive integer")
+
+
+@dataclass(frozen=True)
 class Config:
     sample_id: str
     phenotypes: Path
@@ -54,6 +73,7 @@ class Config:
     columns: dict[str, Column]
     bmi: BmiRule | None = None
     stratification: Stratification = field(default_factory=Stratification)
+    engine: EngineSettings = field(default_factory=EngineSettings)
 
 
 class UniqueLoader(yaml.SafeLoader):
@@ -241,6 +261,13 @@ def _stratification(raw, columns: dict[str, Column]) -> Stratification:
     return spec
 
 
+def _engine(raw) -> EngineSettings:
+    _keys(raw, ["name"], ["rank", "shrinkage", "batch_size"])
+    spec = EngineSettings(**raw)
+    validate_engine(spec)
+    return spec
+
+
 def load_config(path: Path | str) -> Config:
     """Load a strict YAML config; resolve paths relative to its directory."""
     path = Path(path)
@@ -251,7 +278,7 @@ def load_config(path: Path | str) -> Config:
     _keys(
         raw,
         ["sample_id", "phenotypes", "microbiome", "columns"],
-        ["taxonomy", "bmi", "stratification"],
+        ["taxonomy", "bmi", "stratification", "engine"],
     )
     sample_id = raw["sample_id"]
     if not isinstance(sample_id, str) or not sample_id.strip():
@@ -279,4 +306,5 @@ def load_config(path: Path | str) -> Config:
         _stratification(raw["stratification"], specs)
         if "stratification" in raw
         else Stratification(),
+        _engine(raw["engine"]) if "engine" in raw else EngineSettings(),
     )
