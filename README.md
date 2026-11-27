@@ -4,7 +4,7 @@ Constrained, stratified, privacy-aware synthetic biological data generation.
 
 **Fake individuals. Real patterns. No poo.**
 
-Status: **0.0.5** — local fidelity and disclosure diagnostics, experimental joint latent engine, categorical stratification and biological constraints. Outputs are local unreviewed synthetic candidates, not anonymous or approved for release.
+Status: **0.0.6** — local fidelity and disclosure diagnostics, experimental joint latent engine, categorical stratification and biological constraints. Outputs are local unreviewed synthetic candidates, not anonymous or approved for release.
 
 ## Quick start (Linux / Snellius)
 
@@ -29,7 +29,7 @@ da-mocka check-input --config work/mock/config.yaml
 
 The demo is generated from invented population parameters, not patient data. Output paths must not already exist. Input checks are structural, not a release/privacy review.
 
-For your own data, start from configs/example.yaml and edit paths, phenotype types, bounds, and allowed categories explicitly. Paths are relative to the YAML file. Tables are TSV or CSV; sample IDs must be unique and match across tables. Microbiome features must be mutually exclusive terminal taxa, finite and nonnegative, summing to one per row. Optional taxonomy maps each terminal feature to its genus and family.
+For your own data, start from configs/example.yaml and edit paths, phenotype types, bounds, and allowed categories explicitly. Paths are relative to the YAML file. Tables are TSV or CSV; sample IDs must be unique and match across tables. Microbiome features must be mutually exclusive terminal taxa, finite and nonnegative, summing to one per row. Optional taxonomy supports the legacy genus/family mapping or an explicit multi-rank tree, including overlapping inclusive inputs and separate rank tables. See [taxonomy](docs/TAXONOMY.md).
 
 The baseline supports categorical stratification but intentionally does not model within-stratum correlations. It samples observed categories, empirical numerical marginals and taxon presence/positive abundance independently, then normalizes communities. Derived BMI is opt-in. Identifier columns are dropped and sample IDs regenerated. See [baseline engine](docs/BASELINE.md) for limitations.
 

@@ -9,7 +9,7 @@ import pandas as pd
 
 from da_mocka import __version__
 from da_mocka.config import Config, ContractError, load_config, validate_audit
-from da_mocka.io import Dataset, load_dataset
+from da_mocka.io import Dataset, load_dataset, validate_rank_exports
 from da_mocka.stratification import Stratum, plan_strata
 from da_mocka.validation.fidelity import compare
 from da_mocka.validation.privacy import evaluate, subset
@@ -51,8 +51,12 @@ def load_candidate(config: Config, directory: Path) -> Dataset:
         microbiome=directory / "microbiome.tsv",
         taxonomy=directory / "taxonomy.tsv" if config.taxonomy is not None else None,
         columns={k: v for k, v in config.columns.items() if v.kind != "identifier"},
+        taxonomy_mode="terminal",
+        rank_tables={},
     )
-    return load_dataset(schema)
+    data = load_dataset(schema)
+    validate_rank_exports(data, directory, config.sample_id)
+    return data
 
 
 def load_holdout(config: Config, path: Path) -> Dataset:
@@ -64,6 +68,8 @@ def load_holdout(config: Config, path: Path) -> Dataset:
         phenotypes=other.phenotypes,
         microbiome=other.microbiome,
         taxonomy=other.taxonomy,
+        taxonomy_mode=other.taxonomy_mode,
+        rank_tables=other.rank_tables,
     )
     return load_dataset(schema)
 

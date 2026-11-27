@@ -11,9 +11,9 @@ import yaml
 from da_mocka import __version__
 from da_mocka.config import Config, ContractError, load_config
 from da_mocka.engines.base import fit_engine
-from da_mocka.io import Dataset, load_dataset
+from da_mocka.io import Dataset, load_dataset, validate_rank_exports
 from da_mocka.stratification import plan_strata, sample_strata
-from da_mocka.taxonomy import aggregate_taxonomy
+from da_mocka.taxonomy import aggregate_taxonomy, taxonomy_ranks
 from da_mocka.validation.audit import audit, load_holdout, write_report
 
 
@@ -93,7 +93,7 @@ def generate(
         frame.index.name = config.sample_id
     aggregates = {}
     if data.taxonomy is not None:
-        for rank in ("genus", "family"):
+        for rank in taxonomy_ranks(data.taxonomy):
             aggregates[rank] = aggregate_taxonomy(microbiome, data.taxonomy, rank)
 
     output.mkdir(parents=True, exist_ok=False)
@@ -107,6 +107,7 @@ def generate(
         path = output / "config.yaml"
         path.write_text(yaml.safe_dump(_output_config(config), sort_keys=False), encoding="utf-8")
         validated = load_dataset(load_config(path))
+        validate_rank_exports(validated, output, config.sample_id)
         if len(validated.phenotypes) != n_samples:
             raise ContractError("Generated sample count mismatch")
         if audit_dir is not None:

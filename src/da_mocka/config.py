@@ -115,6 +115,8 @@ class Config:
     stratification: Stratification = field(default_factory=Stratification)
     engine: EngineSettings = field(default_factory=EngineSettings)
     validation: ValidationSettings = field(default_factory=ValidationSettings)
+    taxonomy_mode: str = "terminal"
+    rank_tables: dict[str, Path] = field(default_factory=dict)
 
 
 class UniqueLoader(yaml.SafeLoader):
@@ -335,7 +337,15 @@ def load_config(path: Path | str) -> Config:
     _keys(
         raw,
         ["sample_id", "phenotypes", "microbiome", "columns"],
-        ["taxonomy", "bmi", "stratification", "engine", "validation"],
+        [
+            "taxonomy",
+            "bmi",
+            "stratification",
+            "engine",
+            "validation",
+            "taxonomy_mode",
+            "rank_tables",
+        ],
     )
     sample_id = raw["sample_id"]
     if not isinstance(sample_id, str) or not sample_id.strip():
@@ -353,6 +363,21 @@ def load_config(path: Path | str) -> Config:
         return path.parent / value
 
     specs = {name: _column(spec) for name, spec in columns.items()}
+    mode = raw.get("taxonomy_mode", "terminal")
+    if mode not in ("terminal", "hierarchical", "multilevel"):
+        raise ContractError("Unknown taxonomy input mode")
+    rank_tables = raw.get("rank_tables", {})
+    if not isinstance(rank_tables, dict):
+        raise ContractError("rank_tables must be a mapping")
+    if mode != "terminal" and "taxonomy" not in raw:
+        raise ContractError("Hierarchical input requires an explicit taxonomy tree")
+    if bool(rank_tables) != (mode == "multilevel"):
+        raise ContractError("Only multilevel mode requires rank_tables")
+    paths = {}
+    for rank, value in rank_tables.items():
+        if not isinstance(value, str) or not value.strip():
+            raise ContractError("Rank table paths must be nonempty strings")
+        paths[rank] = path.parent / value
     return Config(
         sample_id,
         resolve("phenotypes"),
@@ -365,4 +390,6 @@ def load_config(path: Path | str) -> Config:
         else Stratification(),
         _engine(raw["engine"]) if "engine" in raw else EngineSettings(),
         _validation(raw["validation"], specs) if "validation" in raw else ValidationSettings(),
+        mode,
+        paths,
     )

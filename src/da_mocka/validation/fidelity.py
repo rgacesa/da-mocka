@@ -7,6 +7,7 @@ from scipy.stats import ks_2samp, wasserstein_distance
 
 from da_mocka.config import Config
 from da_mocka.io import Dataset
+from da_mocka.taxonomy import aggregate_taxonomy, taxonomy_ranks
 
 
 def _mean(values) -> float | None:
@@ -124,7 +125,17 @@ def compare(real: Dataset, mock: Dataset, config: Config, max_features: int, see
     clr_b -= clr_b.mean(axis=1, keepdims=True)
     aa, ab = _alpha(a), _alpha(b)
     rng = np.random.default_rng(seed)
+    by_rank = {}
+    if real.taxonomy is not None:
+        for rank in taxonomy_ranks(real.taxonomy):
+            ra = aggregate_taxonomy(real.microbiome, real.taxonomy, rank)
+            rb = aggregate_taxonomy(mock.microbiome, real.taxonomy, rank)
+            by_rank[rank] = {
+                "prevalence_mae": float((ra.gt(0).mean() - rb.gt(0).mean()).abs().mean()),
+                "mean_abundance_l1": float((ra.mean() - rb.mean()).abs().sum()),
+            }
     return {
+        "taxonomy_ranks": by_rank,
         "source_n": len(a),
         "candidate_n": len(b),
         "phenotypes": phenotypes,

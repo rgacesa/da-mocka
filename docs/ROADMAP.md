@@ -10,6 +10,7 @@ Validity (hard biological constraints), fidelity (population distributions and d
 | 0.0.3 (implemented) | Outcome selection, joint categorical strata, proportional/original/balanced/custom/marginal allocation, sparse-stratum policies |
 | 0.0.4 (implemented; experimental) | Joint latent model, correlated presence, log-abundance, phenotypes and missingness |
 | 0.0.5 (implemented; limited attacks) | Statistical fidelity, privacy diagnostics, export gates and reports |
+| 0.0.6 (implemented) | Taxonomic integrity: explicit tree, mixed resolution, inclusive input, multilevel tables, rank export validation |
 | 0.1.0 | Integration, benchmarks, documentation and release review |
 
 ## Statistical design (planned)

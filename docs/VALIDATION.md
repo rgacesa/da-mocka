@@ -79,3 +79,5 @@ The audit cap bounds pairwise distance matrices (up to 5000 rows per side; lower
 systems); exact overlap and marginal statistics use all rows. Full source and candidate matrices
 remain in memory. Advanced attack calibration, cross-validated classifier tests, multiple-testing
 control, robust log-ratio differential abundance and formal differential privacy remain future work.
+
+Since 0.0.6, every expected rank export must agree with the canonical terminal components. Rank-wise prevalence and mean-abundance fidelity are reported, globally and per stratum. See [taxonomy](TAXONOMY.md).

@@ -9,6 +9,8 @@ import pandas as pd
 
 from da_mocka.config import Config, ContractError
 from da_mocka.constraints import check_bmi
+from da_mocka.taxonomy import aggregate_taxonomy, taxonomy_ranks
+from da_mocka.tree import RANKS, TOLERANCE, canonicalize
 
 
 @dataclass
@@ -61,6 +63,40 @@ def _numeric(series):
     return converted
 
 
+def _abundance(path: Path, sample_id: str, index: pd.Index) -> pd.DataFrame:
+    table = _indexed(read_table(path), sample_id)
+    if set(table.index) != set(index):
+        raise ContractError("Sample ID sets differ between tables")
+    if not table.shape[1]:
+        raise ContractError("No microbiome features")
+    table = table.loc[index].apply(_numeric)
+    x = table.to_numpy(dtype=float, na_value=np.nan)
+    if not np.isfinite(x).all() or (x < 0).any():
+        raise ContractError("Abundances must be finite and nonnegative")
+    return pd.DataFrame(x, index=table.index, columns=table.columns)
+
+
+def _tree_data(config: Config, x: pd.DataFrame, tree: pd.DataFrame):
+    if tree["taxon"].isna().any() or tree["taxon"].duplicated().any():
+        raise ContractError("Taxon IDs must be nonempty and unique")
+    tree = tree.set_index("taxon")
+    if bool(config.rank_tables) != (config.taxonomy_mode == "multilevel"):
+        raise ContractError("Only multilevel mode requires rank_tables")
+    for rank, path in config.rank_tables.items():
+        if rank not in RANKS:
+            raise ContractError("Unknown rank table level")
+        other = _abundance(path, config.sample_id, x.index)
+        if not set(other.columns) <= set(tree.index[tree["rank"] == rank]):
+            raise ContractError("Rank table feature does not match declared rank")
+        for col in other:
+            if col in x:
+                if not np.allclose(x[col], other[col], atol=TOLERANCE, rtol=0):
+                    raise ContractError("Conflicting abundance in separate rank tables")
+            else:
+                x[col] = other[col]
+    return canonicalize(x, tree, config.taxonomy_mode)
+
+
 def load_dataset(config: Config) -> Dataset:
     """Validate all inputs and align microbiome rows to phenotype order."""
     phenotypes = _indexed(read_table(config.phenotypes), config.sample_id)
@@ -85,22 +121,19 @@ def load_dataset(config: Config) -> Dataset:
             raise ContractError("Undeclared categorical value")
 
     check_bmi(phenotypes, config.bmi)
-    microbiome = _indexed(read_table(config.microbiome), config.sample_id)
-    if set(microbiome.index) != set(phenotypes.index):
-        raise ContractError("Sample ID sets differ between tables")
-    if microbiome.shape[1] == 0:
-        raise ContractError("No microbiome features")
-    microbiome = microbiome.loc[phenotypes.index].apply(_numeric)
-    x = microbiome.to_numpy(dtype=float, na_value=np.nan)
-    microbiome = pd.DataFrame(x, index=microbiome.index, columns=microbiome.columns)
-    if not np.isfinite(x).all() or (x < 0).any():
-        raise ContractError("Abundances must be finite and nonnegative")
-    if not np.allclose(x.sum(axis=1), 1.0, atol=1e-6, rtol=0):
-        raise ContractError("Abundance rows must sum to one")
-
+    microbiome = _abundance(config.microbiome, config.sample_id, phenotypes.index)
     taxonomy = None
     if config.taxonomy is not None:
-        taxonomy = read_table(config.taxonomy)
+        raw = read_table(config.taxonomy)
+        if set(raw.columns) == {"taxon", "parent", "rank"}:
+            microbiome, taxonomy = _tree_data(config, microbiome, raw)
+            return Dataset(phenotypes, microbiome, taxonomy)
+    if config.taxonomy_mode != "terminal" or config.rank_tables:
+        raise ContractError("Hierarchical input requires an explicit taxonomy tree")
+    if not np.allclose(microbiome.sum(axis=1), 1.0, atol=TOLERANCE, rtol=0):
+        raise ContractError("Abundance rows must sum to one")
+    if config.taxonomy is not None:
+        taxonomy = raw
         if set(taxonomy.columns) != {"taxon", "genus", "family"}:
             raise ContractError("Taxonomy requires taxon, genus, family")
         blank = taxonomy.apply(lambda col: col.str.strip().eq("")).any().any()
@@ -114,3 +147,23 @@ def load_dataset(config: Config) -> Dataset:
             raise ContractError("Genus has inconsistent family mapping")
         taxonomy = taxonomy.set_index("taxon").loc[microbiome.columns]
     return Dataset(phenotypes, microbiome, taxonomy)
+
+
+def validate_rank_exports(data: Dataset, directory: Path, sample_id: str) -> None:
+    """Check all exported rank tables against terminal components, not each other."""
+    ranks = taxonomy_ranks(data.taxonomy) if data.taxonomy is not None else ()
+    expected_files = {f"microbiome_{rank}.tsv" for rank in ranks}
+    actual_files = {path.name for path in directory.glob("microbiome_*.tsv")}
+    if actual_files != expected_files:
+        raise ContractError("Missing or unexpected exported taxonomic rank table")
+    for rank in ranks:
+        expected = aggregate_taxonomy(data.microbiome, data.taxonomy, rank)
+        actual = _abundance(directory / f"microbiome_{rank}.tsv", sample_id, expected.index)
+        if set(actual.columns) != set(expected.columns):
+            raise ContractError("Exported taxonomic rank features differ from tree")
+        if not np.allclose(
+            actual.loc[:, expected.columns], expected, atol=TOLERANCE, rtol=0
+        ):
+            raise ContractError("Exported taxonomic abundances disagree with terminal components")
+        if not np.allclose(actual.sum(axis=1), 1, atol=TOLERANCE, rtol=0):
+            raise ContractError("Exported taxonomic rank must sum to one")
