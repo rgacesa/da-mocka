@@ -36,9 +36,10 @@ def _check_schema(real: Dataset, mock: Dataset, config: Config) -> None:
     if identifiers.intersection(mock.phenotypes.index):
         raise ContractError("Candidate contains source identifiers")
     for name in expected:
-        if config.columns[name].kind == "categorical":
-            if not set(mock.phenotypes[name].dropna()) <= set(real.phenotypes[name].dropna()):
-                raise ContractError("Candidate contains an unobserved categorical value")
+        if config.columns[name].kind == "categorical" and not set(
+            mock.phenotypes[name].dropna()
+        ) <= set(real.phenotypes[name].dropna()):
+            raise ContractError("Candidate contains an unobserved categorical value")
     mock.microbiome = mock.microbiome.loc[:, real.microbiome.columns]
 
 

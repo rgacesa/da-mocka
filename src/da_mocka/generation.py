@@ -70,11 +70,14 @@ def generate(
     output = Path(output)
     if output.exists():
         raise ContractError("Generation output directory already exists")
-    if audit_dir is None and (config.validation.gates or holdout_path is not None):
+    if audit_dir is None and (
+        config.validation.gates or config.validation.attribute_targets or holdout_path is not None
+    ):
         raise ContractError("Validation gates and holdout require a separate audit directory")
-    if audit_dir is not None:
-        if audit_dir.exists() or audit_dir.resolve().is_relative_to(output.resolve()):
-            raise ContractError("Audit directory must be new and outside candidate directory")
+    if audit_dir is not None and (
+        audit_dir.exists() or audit_dir.resolve().is_relative_to(output.resolve())
+    ):
+        raise ContractError("Audit directory must be new and outside candidate directory")
     data = load_dataset(config)
     strata = plan_strata(data, config, n_samples)
     n_samples = sum(group.count for group in strata)
