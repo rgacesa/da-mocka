@@ -9,7 +9,7 @@ The legacy taxon/genus/family mapping remains supported in terminal mode.
 Use a TSV or CSV with exactly taxon, parent, rank columns. Taxon is a globally unique identifier,
 not necessarily a display name; use full lineage IDs or database IDs to distinguish homonyms.
 An empty parent denotes a root. Supported ranks, from broadest to finest, are domain, kingdom,
-phylum, class, order, family, genus, species, strain. Skipped ranks and multiple roots are allowed;
+phylum, class, order, family, genus, species, SGB (sgb), strain. Skipped ranks and multiple roots are allowed;
 parents must exist and be at a strictly broader rank. Unrepresented branches are pruned. The
 reserved prefix __unresolved__: is used internally; do not use it for biological taxon IDs.
 Example (TSV):
@@ -72,6 +72,5 @@ checks only the configured input tables; use validate for an independent full ou
 Local fidelity diagnostics also include prevalence and mean-abundance errors by rank.
 All outputs remain unreviewed candidates; taxonomic correctness is not a privacy guarantee.
 
-Limitations: explicit tree IDs and consistent denominators are required; no automatic
-MetaPhlAn/QIIME lineage parsing or taxonomic database lookup yet. The rank order is fixed;
+Limitations: explicit tree IDs and consistent denominators are required; native MetaPhlAn parsing is available (see [MetaPhlAn](METAPHLAN.md)); no QIIME parsing or taxonomic database lookup yet. The rank order is fixed;
 nonstandard ranks require upstream mapping. Legacy maps still only expose genus/family.

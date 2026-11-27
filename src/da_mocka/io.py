@@ -9,6 +9,7 @@ import pandas as pd
 
 from da_mocka.config import Config, ContractError
 from da_mocka.constraints import check_bmi
+from da_mocka.metaphlan import load_metaphlan
 from da_mocka.taxonomy import aggregate_taxonomy, taxonomy_ranks
 from da_mocka.tree import RANKS, TOLERANCE, canonicalize
 
@@ -121,6 +122,19 @@ def load_dataset(config: Config) -> Dataset:
             raise ContractError("Undeclared categorical value")
 
     check_bmi(phenotypes, config.bmi)
+    if config.microbiome_format != "table":
+        if config.microbiome_format not in ("metaphlan", "metaphlan_profiles"):
+            raise ContractError("Unknown microbiome format")
+        if config.taxonomy is not None or config.rank_tables or config.taxonomy_mode != "terminal":
+            raise ContractError("MetaPhlAn derives its own taxonomy")
+        x, taxonomy = load_metaphlan(
+            config.microbiome, profiles=config.microbiome_format == "metaphlan_profiles"
+        )
+        if set(x.index) != set(phenotypes.index):
+            raise ContractError("Sample ID sets differ between tables")
+        x = x.loc[phenotypes.index]
+        x.index = phenotypes.index
+        return Dataset(phenotypes, x, taxonomy)
     microbiome = _abundance(config.microbiome, config.sample_id, phenotypes.index)
     taxonomy = None
     if config.taxonomy is not None:

@@ -7,7 +7,18 @@ import pandas as pd
 
 from da_mocka.config import ContractError
 
-RANKS = ("domain", "kingdom", "phylum", "class", "order", "family", "genus", "species", "strain")
+RANKS = (
+    "domain",
+    "kingdom",
+    "phylum",
+    "class",
+    "order",
+    "family",
+    "genus",
+    "species",
+    "sgb",
+    "strain",
+)
 RESIDUAL = "__unresolved__:"
 TOLERANCE = 1e-6
 
@@ -20,11 +31,13 @@ def _paths(tree: pd.DataFrame) -> dict[str, tuple[str, ...]]:
         raise ContractError("Empty taxonomic tree or node ID")
     parents = tree["parent"].fillna("").to_dict()
     ranks = tree["rank"].to_dict()
-    order = {rank: i for i, rank in enumerate((*RANKS, "unresolved"))}
+    order = {rank: i for i, rank in enumerate((*RANKS, "unresolved", "unclassified"))}
     for node, parent in parents.items():
         rank = ranks[node]
         if pd.isna(rank) or rank not in order:
             raise ContractError("Unknown taxonomic rank")
+        if rank == "unclassified" and (parent or node != "UNCLASSIFIED"):
+            raise ContractError("Invalid global unclassified root")
         if rank == "unresolved":
             if not parent or node != RESIDUAL + parent:
                 raise ContractError("Invalid unresolved component ID")
@@ -35,7 +48,7 @@ def _paths(tree: pd.DataFrame) -> dict[str, tuple[str, ...]]:
                 raise ContractError("Unknown taxonomic parent")
             if pd.isna(ranks[parent]) or ranks[parent] not in order:
                 raise ContractError("Unknown taxonomic rank")
-            if ranks[parent] == "unresolved":
+            if ranks[parent] in ("unresolved", "unclassified"):
                 raise ContractError("Unresolved component cannot have children")
             if order[ranks[parent]] >= order[rank]:
                 raise ContractError("Cyclic hierarchy or inconsistent rank order")
@@ -52,7 +65,11 @@ def _paths(tree: pd.DataFrame) -> dict[str, tuple[str, ...]]:
 
 
 def canonicalize(
-    abundance: pd.DataFrame, tree: pd.DataFrame, mode: str
+    abundance: pd.DataFrame,
+    tree: pd.DataFrame,
+    mode: str,
+    *,
+    tolerance: float = TOLERANCE,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Convert measured inclusive totals into exclusive terminal components."""
     paths = _paths(tree)
@@ -75,7 +92,7 @@ def canonicalize(
         values = abundance[node].to_numpy(dtype=float)
         if node in children:
             remainder = values - abundance[children[node]].sum(axis=1).to_numpy()
-            if (remainder < -TOLERANCE).any():
+            if (remainder < -tolerance).any():
                 raise ContractError("Measured children exceed parent abundance")
             label = RESIDUAL + node
             if label in canonical.index:
@@ -86,7 +103,7 @@ def canonicalize(
             components[node] = values
     result = pd.DataFrame(components, index=abundance.index)
     total = result.sum(axis=1).to_numpy()
-    if not np.allclose(total, 1, atol=TOLERANCE, rtol=0):
+    if not np.allclose(total, 1, atol=tolerance, rtol=0):
         raise ContractError("Disjoint abundance components must sum to one")
     # Correct only rounding-sized differences in inclusive input.
     if mode != "terminal":
@@ -94,10 +111,14 @@ def canonicalize(
     canonical = canonical.sort_index().astype("string")
     canonical_paths = _paths(canonical)
     if mode != "terminal":
-        for node in abundance.columns:
-            descendants = [col for col in result if node in canonical_paths[col]]
-            reconstructed = result[descendants].sum(axis=1)
-            if not np.allclose(reconstructed, abundance[node], atol=TOLERANCE, rtol=0):
+        totals = {node: np.zeros(len(result)) for node in abundance.columns}
+        for col in result:
+            values = result[col].to_numpy(dtype=float)
+            for node in canonical_paths[col]:
+                if node in totals:
+                    totals[node] += values
+        for node, reconstructed in totals.items():
+            if not np.allclose(reconstructed, abundance[node], atol=tolerance, rtol=0):
                 raise ContractError("Reconstructed parent differs from supplied abundance")
     return result, canonical
 
@@ -121,6 +142,9 @@ def rank_mapping(tree: pd.DataFrame, features: pd.Index, rank: str) -> list[str]
     labels = []
     for node in features:
         path = paths[node]
+        if ranks[node] == "unclassified":
+            labels.append(node)
+            continue
         match = next((p for p in path if ranks[p] == rank), None)
         if match is None:
             ancestor = next(

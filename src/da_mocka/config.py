@@ -117,6 +117,7 @@ class Config:
     validation: ValidationSettings = field(default_factory=ValidationSettings)
     taxonomy_mode: str = "terminal"
     rank_tables: dict[str, Path] = field(default_factory=dict)
+    microbiome_format: str = "table"
 
 
 class UniqueLoader(yaml.SafeLoader):
@@ -345,6 +346,7 @@ def load_config(path: Path | str) -> Config:
             "validation",
             "taxonomy_mode",
             "rank_tables",
+            "microbiome_format",
         ],
     )
     sample_id = raw["sample_id"]
@@ -373,6 +375,11 @@ def load_config(path: Path | str) -> Config:
         raise ContractError("Hierarchical input requires an explicit taxonomy tree")
     if bool(rank_tables) != (mode == "multilevel"):
         raise ContractError("Only multilevel mode requires rank_tables")
+    fmt = raw.get("microbiome_format", "table")
+    if fmt not in ("table", "metaphlan", "metaphlan_profiles"):
+        raise ContractError("Unknown microbiome format")
+    if fmt != "table" and ("taxonomy" in raw or mode != "terminal" or rank_tables):
+        raise ContractError("MetaPhlAn derives its own taxonomy; omit manual taxonomy settings")
     paths = {}
     for rank, value in rank_tables.items():
         if not isinstance(value, str) or not value.strip():
@@ -392,4 +399,5 @@ def load_config(path: Path | str) -> Config:
         _validation(raw["validation"], specs) if "validation" in raw else ValidationSettings(),
         mode,
         paths,
+        fmt,
     )
