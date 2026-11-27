@@ -34,3 +34,5 @@ jobs:
           da-mocka check-input --config work/stratified/config.yaml
           da-mocka generate --config work/ci/config.yaml --output work/joint --engine joint_latent --latent-rank 8 --n-samples 150
           da-mocka check-input --config work/joint/config.yaml
+          da-mocka validate --config work/ci/config.yaml --synthetic work/joint --report work/local_audit
+          test -f work/local_audit/validation.json

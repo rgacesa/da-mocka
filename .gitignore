@@ -19,3 +19,7 @@ local_audit/
 *.pkl
 *.joblib
 .env
+
+# Sensitive local audit directories and reports
+*local_audit*/
+*validation.json

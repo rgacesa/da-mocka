@@ -4,7 +4,7 @@ Constrained, stratified, privacy-aware synthetic biological data generation.
 
 **Fake individuals. Real patterns. No poo.**
 
-Status: **0.0.4** — experimental joint latent engine, categorical stratification, independent baseline, biological constraints and taxonomy aggregation. Outputs are local unreviewed synthetic candidates, not anonymous or approved for release.
+Status: **0.0.5** — local fidelity and disclosure diagnostics, experimental joint latent engine, categorical stratification and biological constraints. Outputs are local unreviewed synthetic candidates, not anonymous or approved for release.
 
 ## Quick start (Linux / Snellius)
 
@@ -36,6 +36,8 @@ The baseline supports categorical stratification but intentionally does not mode
 Stratify by disease or disease and sex, select outcomes, and balance or customize cohort sizes. See [stratification](docs/STRATIFICATION.md) for CLI and YAML examples.
 
 Select `--engine joint_latent` to model approximate within-stratum dependencies, including microbial presence, abundance, phenotypes and missingness. The independent engine remains the default. See [joint engine](docs/JOINT_LATENT.md).
+
+Run a full local audit with `--audit work/local_audit` during generation, or `da-mocka validate --config work/hamsters/config.yaml --synthetic work/mock --report work/recheck`. See [validation and disclosure diagnostics](docs/VALIDATION.md). Reports are sensitive and must stay local.
 
 See [roadmap](docs/ROADMAP.md), [data contract](docs/DATA_CONTRACT.md), and [privacy policy](docs/PRIVACY.md).
 

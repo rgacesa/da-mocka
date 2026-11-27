@@ -14,6 +14,7 @@ from da_mocka.engines.base import fit_engine
 from da_mocka.io import Dataset, load_dataset
 from da_mocka.stratification import plan_strata, sample_strata
 from da_mocka.taxonomy import aggregate_taxonomy
+from da_mocka.validation.audit import audit, load_holdout, write_report
 
 
 def _fresh_ids(data: Dataset, config: Config, n: int, rng: np.random.Generator) -> list[str]:
@@ -54,13 +55,26 @@ def _output_config(config: Config) -> dict:
     return result
 
 
-def generate(config: Config, output: Path | str, n_samples: int | None, seed: int = 42) -> None:
+def generate(
+    config: Config,
+    output: Path | str,
+    n_samples: int | None,
+    seed: int = 42,
+    *,
+    audit_dir: Path | None = None,
+    holdout_path: Path | None = None,
+) -> None:
     """Fit locally, generate, validate a round trip, and write candidate files."""
     if (n_samples is not None and n_samples < 1) or seed < 0:
         raise ContractError("Positive sample count and nonnegative seed required")
     output = Path(output)
     if output.exists():
         raise ContractError("Generation output directory already exists")
+    if audit_dir is None and (config.validation.gates or holdout_path is not None):
+        raise ContractError("Validation gates and holdout require a separate audit directory")
+    if audit_dir is not None:
+        if audit_dir.exists() or audit_dir.resolve().is_relative_to(output.resolve()):
+            raise ContractError("Audit directory must be new and outside candidate directory")
     data = load_dataset(config)
     strata = plan_strata(data, config, n_samples)
     n_samples = sum(group.count for group in strata)
@@ -92,6 +106,12 @@ def generate(config: Config, output: Path | str, n_samples: int | None, seed: in
         validated = load_dataset(load_config(path))
         if len(validated.phenotypes) != n_samples:
             raise ContractError("Generated sample count mismatch")
+        if audit_dir is not None:
+            holdout = load_holdout(config, holdout_path) if holdout_path is not None else None
+            report = audit(data, validated, config, strata=strata, holdout=holdout)
+            write_report(report, audit_dir)
+            if not report["gates_passed"]:
+                raise ContractError("Configured validation gates failed; local report retained")
         manifest = {
             "version": __version__,
             "engine": config.engine.name,
@@ -101,6 +121,7 @@ def generate(config: Config, output: Path | str, n_samples: int | None, seed: in
             "n_samples": n_samples,
             "seed": seed,
             "release_status": "unreviewed_not_anonymous",
+            "audit_performed": audit_dir is not None,
         }
         (output / "manifest.json").write_text(
             json.dumps(manifest, indent=2) + "\n", encoding="utf-8"

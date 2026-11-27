@@ -97,7 +97,7 @@ def test_joint_preserves_associations(associated):
     assert p["marker"].isna().corr(p["marker2"].isna()) > 0.6
     assert p.loc[p["category"] == "high", "trait"].mean() > 55
     assert "unseen" not in p["category"].values
-    assert np.allclose(x.sum(1), 1)
+    assert np.allclose(x.sum(axis=1), 1)
 
 
 def test_joint_roundtrip(cohort, tmp_path):
@@ -111,7 +111,7 @@ def test_joint_roundtrip(cohort, tmp_path):
     assert p.index.equals(x.index)
     assert np.allclose(p["BMI"], p["weight"] / p["height"] ** 2)
     assert (x >= 0).all().all()
-    assert np.allclose(x.sum(1), 1)
+    assert np.allclose(x.sum(axis=1), 1)
     assert all(f.read_bytes() == (b / f.name).read_bytes() for f in a.iterdir())
 
 

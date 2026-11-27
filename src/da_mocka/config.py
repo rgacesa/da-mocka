@@ -65,6 +65,46 @@ def validate_engine(spec: EngineSettings) -> None:
 
 
 @dataclass(frozen=True)
+class ValidationSettings:
+    max_samples: int = 1000
+    max_features: int = 64
+    seed: int = 42
+    attribute_targets: tuple[str, ...] = ()
+    gates: dict[str, float] = field(default_factory=dict)
+
+
+GATE_LIMITS = {
+    "max_prevalence_mae": 1.0,
+    "max_phenotype_ks_mean": 1.0,
+    "max_cross_modal_mae": 2.0,
+    "max_joint_match_rate": 1.0,
+    "max_rare_match_rate": 1.0,
+    "min_joint_p05": 1.0,
+    "max_membership_auc": 1.0,
+    "max_attribute_advantage": 1.0,
+}
+
+
+def validate_audit(spec: ValidationSettings, columns: dict[str, Column]) -> None:
+    if type(spec.max_samples) is not int or not 2 <= spec.max_samples <= 5000:
+        raise ContractError("Audit max_samples must be an integer from 2 to 5000")
+    if type(spec.max_features) is not int or not 1 <= spec.max_features <= 256:
+        raise ContractError("Audit max_features must be an integer from 1 to 256")
+    if type(spec.seed) is not int or spec.seed < 0:
+        raise ContractError("Audit seed must be a nonnegative integer")
+    for name in spec.attribute_targets:
+        if name not in columns or columns[name].kind != "categorical":
+            raise ContractError("Attribute target must be a declared categorical phenotype")
+    for name, value in spec.gates.items():
+        if name not in GATE_LIMITS:
+            raise ContractError("Unknown validation gate")
+        if not _number(value) or not 0 <= value <= GATE_LIMITS[name]:
+            raise ContractError("Validation gate outside permitted range")
+        if name == "max_membership_auc" and value < 0.5:
+            raise ContractError("Membership AUC gate must be at least 0.5")
+
+
+@dataclass(frozen=True)
 class Config:
     sample_id: str
     phenotypes: Path
@@ -74,6 +114,7 @@ class Config:
     bmi: BmiRule | None = None
     stratification: Stratification = field(default_factory=Stratification)
     engine: EngineSettings = field(default_factory=EngineSettings)
+    validation: ValidationSettings = field(default_factory=ValidationSettings)
 
 
 class UniqueLoader(yaml.SafeLoader):
@@ -268,6 +309,22 @@ def _engine(raw) -> EngineSettings:
     return spec
 
 
+def _validation(raw, columns: dict[str, Column]) -> ValidationSettings:
+    _keys(raw, [], ["max_samples", "max_features", "seed", "attribute_targets", "gates"])
+    gates = raw.get("gates", {})
+    if not isinstance(gates, dict):
+        raise ContractError("Validation gates must be a mapping")
+    spec = ValidationSettings(
+        max_samples=raw.get("max_samples", 1000),
+        max_features=raw.get("max_features", 64),
+        seed=raw.get("seed", 42),
+        attribute_targets=_strings(raw.get("attribute_targets", [])),
+        gates=gates,
+    )
+    validate_audit(spec, columns)
+    return spec
+
+
 def load_config(path: Path | str) -> Config:
     """Load a strict YAML config; resolve paths relative to its directory."""
     path = Path(path)
@@ -278,7 +335,7 @@ def load_config(path: Path | str) -> Config:
     _keys(
         raw,
         ["sample_id", "phenotypes", "microbiome", "columns"],
-        ["taxonomy", "bmi", "stratification", "engine"],
+        ["taxonomy", "bmi", "stratification", "engine", "validation"],
     )
     sample_id = raw["sample_id"]
     if not isinstance(sample_id, str) or not sample_id.strip():
@@ -307,4 +364,5 @@ def load_config(path: Path | str) -> Config:
         if "stratification" in raw
         else Stratification(),
         _engine(raw["engine"]) if "engine" in raw else EngineSettings(),
+        _validation(raw["validation"], specs) if "validation" in raw else ValidationSettings(),
     )

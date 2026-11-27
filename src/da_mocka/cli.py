@@ -10,6 +10,7 @@ from da_mocka.config import ContractError, Stratification, load_config
 from da_mocka.demo import make_demo
 from da_mocka.generation import generate
 from da_mocka.io import load_dataset
+from da_mocka.validation.audit import validate_directory
 
 
 def _stratify_args(args, spec: Stratification) -> Stratification:
@@ -40,6 +41,19 @@ def _stratify_args(args, spec: Stratification) -> Stratification:
     return replace(spec, **changes)
 
 
+def _group_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--stratify", nargs="+")
+    parser.add_argument("--include", action="append", metavar="COLUMN=VALUES")
+    parser.add_argument(
+        "--allocation", choices=["proportional", "balanced", "original", "custom", "marginal"]
+    )
+    parser.add_argument("--balance", nargs="+")
+    parser.add_argument("--min-stratum-size", type=int)
+    parser.add_argument("--rare-strata", choices=["error", "suppress"])
+    parser.add_argument("--missing-strata", choices=["error", "exclude"])
+    parser.add_argument("--pooling-strength", type=float)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="da-mocka")
     parser.add_argument("--version", action="version", version=__version__)
@@ -55,16 +69,15 @@ def main(argv: list[str] | None = None) -> int:
     gen.add_argument("--output", type=Path, required=True)
     gen.add_argument("--n-samples", type=int)
     gen.add_argument("--seed", type=int, default=42)
-    gen.add_argument("--stratify", nargs="+")
-    gen.add_argument("--include", action="append", metavar="COLUMN=VALUES")
-    gen.add_argument(
-        "--allocation", choices=["proportional", "balanced", "original", "custom", "marginal"]
-    )
-    gen.add_argument("--balance", nargs="+")
-    gen.add_argument("--min-stratum-size", type=int)
-    gen.add_argument("--rare-strata", choices=["error", "suppress"])
-    gen.add_argument("--missing-strata", choices=["error", "exclude"])
-    gen.add_argument("--pooling-strength", type=float)
+    _group_options(gen)
+    gen.add_argument("--audit", type=Path, help="Separate local diagnostic directory")
+    gen.add_argument("--holdout", type=Path, help="Independent holdout YAML; not used for fitting")
+    validate = commands.add_parser("validate", help="Audit existing local synthetic candidates")
+    validate.add_argument("--config", type=Path, required=True)
+    validate.add_argument("--synthetic", type=Path, required=True)
+    validate.add_argument("--report", type=Path, required=True)
+    validate.add_argument("--holdout", type=Path)
+    _group_options(validate)
     gen.add_argument("--engine", choices=["independent", "joint_latent"])
     gen.add_argument("--latent-rank", type=int)
     gen.add_argument("--shrinkage", type=float)
@@ -88,8 +101,20 @@ def main(argv: list[str] | None = None) -> int:
                 if value is not None
             }
             config = replace(config, engine=replace(config.engine, **options))
-            generate(config, args.output, args.n_samples, args.seed)
+            generate(
+                config,
+                args.output,
+                args.n_samples,
+                args.seed,
+                audit_dir=args.audit,
+                holdout_path=args.holdout,
+            )
             print("Synthetic candidates created. Not reviewed for disclosure or release.")
+        elif args.command == "validate":
+            config = load_config(args.config)
+            config = replace(config, stratification=_stratify_args(args, config.stratification))
+            validate_directory(config, args.synthetic, args.report, args.holdout)
+            print("Local diagnostics written. Not anonymity certification.")
         else:
             data = load_dataset(load_config(args.config))
             print(
