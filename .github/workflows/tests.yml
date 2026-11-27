@@ -25,3 +25,5 @@ jobs:
       - run: |
           da-mocka demo --output work/ci --n-samples 100 --seed 42
           da-mocka check-input --config work/ci/config.yaml
+          da-mocka generate --config work/ci/config.yaml --output work/mock --n-samples 150
+          da-mocka check-input --config work/mock/config.yaml

@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from da_mocka.config import Config, ContractError
+from da_mocka.constraints import check_bmi
 
 
 @dataclass
@@ -83,6 +84,7 @@ def load_dataset(config: Config) -> Dataset:
         elif spec.kind == "categorical" and not values.dropna().isin(spec.categories).all():
             raise ContractError("Undeclared categorical value")
 
+    check_bmi(phenotypes, config.bmi)
     microbiome = _indexed(read_table(config.microbiome), config.sample_id)
     if set(microbiome.index) != set(phenotypes.index):
         raise ContractError("Sample ID sets differ between tables")

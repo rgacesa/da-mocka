@@ -66,6 +66,7 @@ def make_demo(output: Path | str, n_samples: int = 2000, seed: int = 42) -> None
         "phenotypes": "phenotypes.tsv",
         "microbiome": "microbiome.tsv",
         "taxonomy": "taxonomy.tsv",
+        "bmi": {"target": "BMI", "weight": "weight", "height": "height"},
         "columns": {
             "disease": {"type": "categorical", "categories": ["control", "A", "B"]},
             "sex": {"type": "categorical", "categories": ["female", "male"]},

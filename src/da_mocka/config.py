@@ -21,12 +21,23 @@ class Column:
 
 
 @dataclass(frozen=True)
+class BmiRule:
+    """Derive BMI from weight in kg and height in metres."""
+
+    target: str
+    weight: str
+    height: str
+    atol: float = 0.1
+
+
+@dataclass(frozen=True)
 class Config:
     sample_id: str
     phenotypes: Path
     microbiome: Path
     taxonomy: Path | None
     columns: dict[str, Column]
+    bmi: BmiRule | None = None
 
 
 class UniqueLoader(yaml.SafeLoader):
@@ -88,6 +99,23 @@ def _column(raw):
     return Column(kind, nullable)
 
 
+def _bmi_rule(raw, columns: dict[str, Column]) -> BmiRule:
+    _keys(raw, ["target", "weight", "height"], ["atol"])
+    names = [raw[key] for key in ("target", "weight", "height")]
+    if any(not isinstance(name, str) or name not in columns for name in names):
+        raise ContractError("BMI rule requires declared columns")
+    if len(set(names)) != 3:
+        raise ContractError("BMI rule columns must be distinct")
+    for name in names:
+        spec = columns[name]
+        if spec.kind != "continuous" or spec.nullable or spec.minimum <= 0:
+            raise ContractError("BMI rule requires positive nonnullable continuous columns")
+    atol = raw.get("atol", 0.1)
+    if not _number(atol) or atol < 0:
+        raise ContractError("BMI tolerance must be finite and nonnegative")
+    return BmiRule(*names, atol)
+
+
 def load_config(path: Path | str) -> Config:
     """Load a strict YAML config; resolve paths relative to its directory."""
     path = Path(path)
@@ -95,7 +123,7 @@ def load_config(path: Path | str) -> Config:
         raw = yaml.load(path.read_text(encoding="utf-8"), Loader=UniqueLoader)
     except (OSError, UnicodeError, yaml.YAMLError) as exc:
         raise ContractError("Cannot read configuration") from exc
-    _keys(raw, ["sample_id", "phenotypes", "microbiome", "columns"], ["taxonomy"])
+    _keys(raw, ["sample_id", "phenotypes", "microbiome", "columns"], ["taxonomy", "bmi"])
     sample_id = raw["sample_id"]
     if not isinstance(sample_id, str) or not sample_id.strip():
         raise ContractError("Invalid sample ID column")
@@ -111,10 +139,12 @@ def load_config(path: Path | str) -> Config:
             raise ContractError("Input paths must be nonempty strings")
         return path.parent / value
 
+    specs = {name: _column(spec) for name, spec in columns.items()}
     return Config(
         sample_id,
         resolve("phenotypes"),
         resolve("microbiome"),
         resolve("taxonomy") if "taxonomy" in raw else None,
-        {name: _column(spec) for name, spec in columns.items()},
+        specs,
+        _bmi_rule(raw["bmi"], specs) if "bmi" in raw else None,
     )
