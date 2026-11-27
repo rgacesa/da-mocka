@@ -1,0 +1,21 @@
+# Illustrative adult cohort; adapt all bounds and categories to your study.
+sample_id: sample_id
+phenotypes: ../work/input/phenotypes.tsv
+microbiome: ../work/input/microbiome.tsv
+taxonomy: ../work/input/taxonomy.tsv
+columns:
+  age:
+    type: integer
+    min: 18
+    max: 85
+  BMI:
+    type: continuous
+    min: 15
+    max: 45
+    nullable: true
+  sex:
+    type: categorical
+    categories: [female, male]
+  disease:
+    type: categorical
+    categories: [control, A, B]

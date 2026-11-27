@@ -2,6 +2,33 @@
 
 Constrained, stratified, privacy-aware synthetic biological data generation.
 
-Fake individuals. Real patterns. No poo.
+**Fake individuals. Real patterns. No poo.**
 
-Development milestone 0.0.1: input contracts and artificial demonstration data. No real-data synthesis or anonymity guarantee yet.
+Status: **0.0.1** — input contracts and fully artificial demo cohort. This release does not fit or synthesize real data, nor certify anonymity.
+
+## Quick start (Linux / Snellius)
+
+Use an available Python 3.11–3.13 interpreter.
+
+```bash
+git clone https://github.com/rgacesa/da-mocka.git
+cd da-mocka
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e '.[dev]'
+ruff check .
+ruff format --check .
+pytest
+da-mocka --version
+da-mocka demo --output work/hamsters --n-samples 2000 --seed 42
+da-mocka check-input --config work/hamsters/config.yaml
+```
+
+The demo is generated from invented population parameters, not patient data. Output paths must not already exist. Input checks are structural, not a release/privacy review.
+
+For your own data, start from configs/example.yaml and edit paths, phenotype types, bounds, and allowed categories explicitly. Paths are relative to the YAML file. Tables are TSV or CSV; sample IDs must be unique and match across tables. Microbiome features must be mutually exclusive terminal taxa, finite and nonnegative, summing to one per row. Optional taxonomy maps each terminal feature to its genus and family.
+
+See [roadmap](docs/ROADMAP.md), [data contract](docs/DATA_CONTRACT.md), and [privacy policy](docs/PRIVACY.md).
+
+Never commit real cohort data, fitted models, or local audit reports to this public repository.
