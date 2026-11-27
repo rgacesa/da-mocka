@@ -93,9 +93,7 @@ def _conditional(
         indices = groups[group.key]
         if len(indices) != group.count:
             raise ContractError("Candidate stratum counts differ from requested allocation")
-        a = Dataset(
-            real.phenotypes.loc[group.ids], real.microbiome.loc[group.ids], real.taxonomy
-        )
+        a = Dataset(real.phenotypes.loc[group.ids], real.microbiome.loc[group.ids], real.taxonomy)
         b = subset(mock, indices)
         record = compare(a, b, config, spec.max_features, spec.seed)
         privacy = evaluate(a, b, config, spec.max_samples, spec.seed)
@@ -135,9 +133,7 @@ def gate_results(report: dict, config: Config) -> list[dict]:
     values = {
         "max_prevalence_mae": [r["metrics"]["prevalence_mae"] for r in fidelity],
         "max_phenotype_ks_mean": [r["metrics"]["phenotype_ks_mean"] for r in fidelity],
-        "max_cross_modal_mae": [
-            r["metrics"]["correlation_mae"]["cross_modal"] for r in fidelity
-        ],
+        "max_cross_modal_mae": [r["metrics"]["correlation_mae"]["cross_modal"] for r in fidelity],
         "max_joint_match_rate": [risk["exact"]["joint_match_rate"] for risk in risks],
         "max_rare_match_rate": [risk["rare_categories"]["rare_match_rate"] for risk in risks],
         "min_joint_p05": [risk["candidate_to_source"]["joint"]["p05"] for risk in risks],

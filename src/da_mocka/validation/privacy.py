@@ -63,9 +63,7 @@ def _phenotype_distance(
             y = bv.to_numpy(dtype=float, na_value=0)
             scale = spec.maximum - spec.minimum or 1.0
             delta = np.minimum(np.abs(x[:, None] - y[None, :]) / scale, 1)
-        delta[am[:, None] | bm[None, :]] = (am[:, None] != bm[None, :])[
-            am[:, None] | bm[None, :]
-        ]
+        delta[am[:, None] | bm[None, :]] = (am[:, None] != bm[None, :])[am[:, None] | bm[None, :]]
         result += delta
         n += 1
     if not n:
@@ -75,11 +73,14 @@ def _phenotype_distance(
 
 def distances(a: Dataset, b: Dataset, config: Config) -> dict[str, np.ndarray]:
     p = _phenotype_distance(a, b, config)
-    x = cdist(
-        a.microbiome.to_numpy(dtype=float),
-        b.microbiome.loc[:, a.microbiome.columns].to_numpy(dtype=float),
-        metric="cityblock",
-    ) / 2
+    x = (
+        cdist(
+            a.microbiome.to_numpy(dtype=float),
+            b.microbiome.loc[:, a.microbiome.columns].to_numpy(dtype=float),
+            metric="cityblock",
+        )
+        / 2
+    )
     return {"phenotype": p, "microbiome": x, "joint": (p + x) / 2}
 
 
@@ -111,9 +112,7 @@ def _rare(real: Dataset, mock: Dataset, config: Config, threshold: int) -> dict:
     }
 
 
-def _attribute(
-    real: Dataset, mock: Dataset, holdout: Dataset, config: Config, target: str
-) -> dict:
+def _attribute(real: Dataset, mock: Dataset, holdout: Dataset, config: Config, target: str) -> dict:
     """Nearest synthetic phenotype attack versus training-majority baseline."""
     if target not in config.columns or config.columns[target].kind != "categorical":
         raise ContractError("Attribute target must be a declared categorical phenotype")
