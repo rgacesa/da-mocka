@@ -5,9 +5,7 @@ import pandas as pd
 from da_mocka.config import ContractError
 
 
-def aggregate_taxonomy(
-    microbiome: pd.DataFrame, taxonomy: pd.DataFrame, rank: str
-) -> pd.DataFrame:
+def aggregate_taxonomy(microbiome: pd.DataFrame, taxonomy: pd.DataFrame, rank: str) -> pd.DataFrame:
     """Sum terminal features by a validated genus or family mapping."""
     if rank not in ("genus", "family"):
         raise ContractError("Unsupported taxonomic rank")

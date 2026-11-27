@@ -53,9 +53,7 @@ def _output_config(config: Config) -> dict:
     return result
 
 
-def generate(
-    config: Config, output: Path | str, n_samples: int, seed: int = 42
-) -> None:
+def generate(config: Config, output: Path | str, n_samples: int, seed: int = 42) -> None:
     """Fit locally, generate, validate a round trip, and write candidate files."""
     if n_samples < 1 or seed < 0:
         raise ContractError("Positive sample count and nonnegative seed required")
