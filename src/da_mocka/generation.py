@@ -12,6 +12,7 @@ from da_mocka import __version__
 from da_mocka.config import Config, ContractError, load_config
 from da_mocka.engines.independent import IndependentEngine
 from da_mocka.io import Dataset, load_dataset
+from da_mocka.stratification import plan_strata, sample_strata
 from da_mocka.taxonomy import aggregate_taxonomy
 
 
@@ -53,18 +54,23 @@ def _output_config(config: Config) -> dict:
     return result
 
 
-def generate(config: Config, output: Path | str, n_samples: int, seed: int = 42) -> None:
+def generate(config: Config, output: Path | str, n_samples: int | None, seed: int = 42) -> None:
     """Fit locally, generate, validate a round trip, and write candidate files."""
-    if n_samples < 1 or seed < 0:
+    if (n_samples is not None and n_samples < 1) or seed < 0:
         raise ContractError("Positive sample count and nonnegative seed required")
     output = Path(output)
     if output.exists():
         raise ContractError("Generation output directory already exists")
     data = load_dataset(config)
-    engine = IndependentEngine.fit(data, config)
+    strata = plan_strata(data, config, n_samples)
+    n_samples = sum(group.count for group in strata)
     rng = np.random.default_rng(seed)
-    phenotypes = engine.sample_phenotypes(n_samples, rng)
-    microbiome = engine.sample_microbiome(n_samples, rng)
+    if config.stratification.columns:
+        phenotypes, microbiome = sample_strata(data, config, strata, rng)
+    else:
+        engine = IndependentEngine.fit(data, config)
+        phenotypes = engine.sample_phenotypes(n_samples, rng)
+        microbiome = engine.sample_microbiome(n_samples, rng)
     ids = _fresh_ids(data, config, n_samples, rng)
     for frame in (phenotypes, microbiome):
         frame.index = ids
@@ -90,6 +96,8 @@ def generate(config: Config, output: Path | str, n_samples: int, seed: int = 42)
         manifest = {
             "version": __version__,
             "engine": "independent",
+            "stratification": list(config.stratification.columns),
+            "allocation": config.stratification.allocation,
             "n_samples": n_samples,
             "seed": seed,
             "release_status": "unreviewed_not_anonymous",

@@ -27,3 +27,5 @@ jobs:
           da-mocka check-input --config work/ci/config.yaml
           da-mocka generate --config work/ci/config.yaml --output work/mock --n-samples 150
           da-mocka check-input --config work/mock/config.yaml
+          da-mocka generate --config work/ci/config.yaml --output work/stratified --n-samples 100 --stratify disease sex --include disease=A,control --balance disease --min-stratum-size 2
+          da-mocka check-input --config work/stratified/config.yaml

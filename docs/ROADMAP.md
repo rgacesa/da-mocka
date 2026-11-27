@@ -7,7 +7,7 @@ Validity (hard biological constraints), fidelity (population distributions and d
 |---|---|
 | 0.0.1 (implemented) | Package, strict YAML and table contracts, demo cohort, pytest, Ruff, CI |
 | 0.0.2 (implemented) | Independent baseline, bounded phenotype generation, constraints and taxonomy aggregation |
-| 0.0.3 | Outcome selection, joint categorical strata, proportional/original/balanced/custom/marginal allocation, sparse-stratum policies |
+| 0.0.3 (implemented) | Outcome selection, joint categorical strata, proportional/original/balanced/custom/marginal allocation, sparse-stratum policies |
 | 0.0.4 | Joint latent model, correlated presence, log-abundance, phenotypes and missingness |
 | 0.0.5 | Statistical fidelity, privacy diagnostics, export gates and reports |
 | 0.1.0 | Integration, benchmarks, documentation and release review |
@@ -22,4 +22,4 @@ Hard checks: finite nonnegative abundance, sum one, valid categories and bounds,
 
 Cosmic hamster reference: artificial disease signals, sparse communities, correlated phenotypes and missingness. Scale sample count and feature count independently (100 to 1M samples, 100 to 10k taxa, subject to resource limits); record runtime, peak RAM, throughput, fidelity. Batch generation and avoid dense feature covariance where possible.
 
-Future export layout: synthetic tables plus screened manifest in synthetic/; sensitive diagnostics and fitted parameters stay in local_audit/. 0.0.2 writes local candidates only; disclosure diagnostics and release gates are not implemented.
+Future export layout: synthetic tables plus screened manifest in synthetic/; sensitive diagnostics and fitted parameters stay in local_audit/. 0.0.3 writes local candidates only; disclosure diagnostics and release gates are not implemented.
