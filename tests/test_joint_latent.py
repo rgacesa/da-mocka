@@ -67,9 +67,7 @@ def associated(cohort):
             "category": np.where(a > 0, "high", "low"),
         }
     )
-    x = np.column_stack(
-        [np.exp(a), np.exp(-a), np.where(a > 0, 0.4, 0), np.where(a > 0, 0.6, 0)]
-    )
+    x = np.column_stack([np.exp(a), np.exp(-a), np.where(a > 0, 0.4, 0), np.where(a > 0, 0.6, 0)])
     x /= x.sum(1, keepdims=True)
     config = replace(
         config,
@@ -181,18 +179,21 @@ def test_cli_and_yaml(cohort, tmp_path):
     raw["engine"] = {"name": "joint_latent", "rank": 4, "batch_size": 10}
     path.write_text(yaml.safe_dump(raw))
     assert load_config(path).engine.rank == 4
-    assert main(
-        [
-            "generate",
-            "--config",
-            str(path),
-            "--output",
-            str(tmp_path / "mock"),
-            "--n-samples",
-            "20",
-            "--engine",
-            "joint_latent",
-            "--latent-rank",
-            "5",
-        ]
-    ) == 0
+    assert (
+        main(
+            [
+                "generate",
+                "--config",
+                str(path),
+                "--output",
+                str(tmp_path / "mock"),
+                "--n-samples",
+                "20",
+                "--engine",
+                "joint_latent",
+                "--latent-rank",
+                "5",
+            ]
+        )
+        == 0
+    )
