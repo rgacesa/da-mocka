@@ -29,8 +29,7 @@ def test_native_profiles(tmp_path):
     path = tmp_path / "merged.txt"
     write_merged(
         path,
-        f"UNCLASSIFIED\t20\t100\n{K}\t80\t0\n{G}\t80\t0\n"
-        f"{S}\t50\t0\n{T}\t50\t0\n{U}\t30\t0\n",
+        f"UNCLASSIFIED\t20\t100\n{K}\t80\t0\n{G}\t80\t0\n{S}\t50\t0\n{T}\t50\t0\n{U}\t30\t0\n",
     )
     x, tree = load_metaphlan(path)
     assert list(x.index) == ["001", "002"]
@@ -50,10 +49,7 @@ def test_native_profiles(tmp_path):
 
 def test_filtered_gzip_with_metadata(tmp_path):
     path = tmp_path / "filtered.tsv.gz"
-    text = (
-        "#clade_name\tNCBI_tax_id\t001\t002\n"
-        f"{T}\t2|123\t70\t40\n{U}\t2|456\t30\t60\n"
-    )
+    text = f"#clade_name\tNCBI_tax_id\t001\t002\n{T}\t2|123\t70\t40\n{U}\t2|456\t30\t60\n"
     with gzip.open(path, "wt") as handle:
         handle.write(text)
     x, tree = load_metaphlan(path)
